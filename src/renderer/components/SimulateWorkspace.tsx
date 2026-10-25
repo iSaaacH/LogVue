@@ -9,6 +9,7 @@ import type {
   SimulationStatus
 } from '@shared/types/simulation'
 import { api } from '../api/client'
+import { useKeyboardGamepad } from '../hooks/useKeyboardGamepad'
 import {
   readBrowserGamepad,
   useBrowserControllers,
@@ -43,6 +44,7 @@ export default function SimulateWorkspace(): JSX.Element {
   const [scenarioId, setScenarioId] = useState('')
   const [gamepad1Source, setGamepad1Source] = useState<SimulationGamepadSource>({ kind: 'NONE' })
   const [gamepad2Source, setGamepad2Source] = useState<SimulationGamepadSource>({ kind: 'NONE' })
+  const [keyboardEnabled, setKeyboardEnabled] = useState(false)
   const [controller1, setController1] = useState<number | null>(() =>
     parseStoredControllerIndex(globalThis.localStorage?.getItem(CONTROLLER_1_STORAGE_KEY) ?? null)
   )
@@ -223,7 +225,7 @@ export default function SimulateWorkspace(): JSX.Element {
       ({ index, mapping }) => index === lastActivatedIndex && mapping === 'standard'
     )
     if (!candidate) return
-    if (gamepad1Source.kind === 'LIVE' && controller1 === null) {
+    if (gamepad1Source.kind === 'LIVE' && controller1 === null && !keyboardEnabled) {
       setController1(candidate.index)
     } else if (
       gamepad2Source.kind === 'LIVE' &&
@@ -232,23 +234,26 @@ export default function SimulateWorkspace(): JSX.Element {
     ) {
       setController2(candidate.index)
     }
-  }, [controller1, controller2, controllers, gamepad1Source.kind, gamepad2Source.kind, lastActivatedIndex])
+  }, [controller1, controller2, controllers, gamepad1Source.kind, gamepad2Source.kind, lastActivatedIndex, keyboardEnabled])
 
   const publishGamepad1 = sessionActive && status?.config?.gamepad1.kind === 'LIVE'
   const publishGamepad2 = sessionActive && status?.config?.gamepad2.kind === 'LIVE'
+  const keyboard = useKeyboardGamepad(Boolean(publishGamepad1 && keyboardEnabled && phase === 'running'))
+  const keyboardRead = useRef(keyboard.read)
+  keyboardRead.current = keyboard.read
   useEffect(() => {
     if (!publishGamepad1 && !publishGamepad2) return
     let animationFrame = 0
     const publish = (): void => {
       api.simulation.publishGamepads({
-        gamepad1: publishGamepad1 ? readBrowserGamepad(controller1) : undefined,
+        gamepad1: publishGamepad1 ? keyboardEnabled ? keyboardRead.current() : readBrowserGamepad(controller1) : undefined,
         gamepad2: publishGamepad2 ? readBrowserGamepad(controller2) : undefined
       })
       animationFrame = window.requestAnimationFrame(publish)
     }
     publish()
     return () => window.cancelAnimationFrame(animationFrame)
-  }, [controller1, controller2, publishGamepad1, publishGamepad2])
+  }, [controller1, controller2, publishGamepad1, publishGamepad2, keyboardEnabled])
 
   const chooseProject = async (): Promise<void> => {
     setBusy('pick-project')
@@ -571,6 +576,8 @@ export default function SimulateWorkspace(): JSX.Element {
                   onSource={setGamepad1Source}
                   onController={setController1}
                   onPickRlog={() => void chooseRlog(1)}
+                  keyboardEnabled={keyboardEnabled}
+                  onKeyboard={setKeyboardEnabled}
                 />
                 <GamepadSourcePicker
                   slot={2}
@@ -585,6 +592,16 @@ export default function SimulateWorkspace(): JSX.Element {
                   onPickRlog={() => void chooseRlog(2)}
                 />
               </div>
+              {keyboardEnabled && gamepad1Source.kind === 'LIVE' && (
+                <div className="sim-keyboard-pad" tabIndex={0} onFocus={keyboard.onFocus} onBlur={keyboard.onBlur}
+                  aria-label="Keyboard driving area. Focus here to drive; leave to release all controls.">
+                  <strong>Click here to drive with the keyboard</strong>
+                  <p><kbd>W A S D</kbd> move · <kbd>Q E</kbd> turn · <kbd>Space</kbd> hold rear aim</p>
+                  <p><kbd>I</kbd> intake · <kbd>K</kbd> aim + shoot · <kbd>X</kbd> eject · <kbd>T</kbd> tip HIVE (simulation)</p>
+                  <small>Hold keys while running. Leaving this area, switching windows, or pausing releases controls.</small>
+                </div>
+              )}
+              <p className="sim-control-guide">Pinkbacks controller: right stick moves, left stick turns, RB aims rear shooter, LT intakes, RT aims + shoots, X ejects, D-pad down tips HIVE in simulation.</p>
               <div className="sim-session-options">
                 <div className="sim-field">
                   <label htmlFor="sim-fast-target">Run until (s)</label>
@@ -738,7 +755,9 @@ function GamepadSourcePicker({
   sourceLocked,
   onSource,
   onController,
-  onPickRlog
+  onPickRlog,
+  keyboardEnabled = false,
+  onKeyboard
 }: {
   slot: Slot
   source: SimulationGamepadSource
@@ -750,6 +769,8 @@ function GamepadSourcePicker({
   onSource: (source: SimulationGamepadSource) => void
   onController: (index: number | null) => void
   onPickRlog: () => void
+  keyboardEnabled?: boolean
+  onKeyboard?: (enabled: boolean) => void
 }): JSX.Element {
   const controller = controllers.find(({ index }) => index === controllerIndex)
   const standardControllers = controllers.filter(({ mapping }) => mapping === 'standard')
@@ -788,13 +809,18 @@ function GamepadSourcePicker({
           <>
             <select
               aria-label={`Physical controller for Gamepad ${slot}`}
-              value={controllerIndex ?? ''}
-              disabled={!gamepadsSupported}
+              value={keyboardEnabled ? 'keyboard' : controllerIndex ?? ''}
+              disabled={!gamepadsSupported && !onKeyboard}
               onChange={(event) =>
-                onController(event.target.value === '' ? null : Number(event.target.value))
+                {
+                  const isKeyboard = event.target.value === 'keyboard'
+                  onKeyboard?.(isKeyboard)
+                  onController(isKeyboard || event.target.value === '' ? null : Number(event.target.value))
+                }
               }
             >
               <option value="">Select a controller…</option>
+              {onKeyboard && <option value="keyboard">Keyboard · WASD + aim / intake / shoot</option>}
               {controllerIndex !== null && !controller && (
                 <option value={controllerIndex}>Controller {controllerIndex + 1} · disconnected</option>
               )}
@@ -807,7 +833,7 @@ function GamepadSourcePicker({
             <div className={`sim-controller-hint ${controller?.connected ? 'connected' : ''}`}>
               <span className="dot" />
               <span>
-                {!gamepadsSupported
+                {keyboardEnabled ? 'Keyboard selected. Focus the driving area below after starting.' : !gamepadsSupported
                   ? 'The browser Gamepad API is unavailable.'
                   : controller?.connected
                     ? sourceLocked

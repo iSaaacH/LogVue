@@ -2646,3 +2646,9 @@ button.chip.meta.more {
     transition: none;
   }
 }
+/* Focus explicitly scopes keyboard driving away from normal text entry. */
+.sim-keyboard-pad { padding: 16px; margin: 14px 0; border: 2px solid var(--border, #475569); border-radius: 12px; background: #152030; cursor: pointer; color: #e2e8f0; }
+.sim-keyboard-pad:focus { outline: 3px solid #38bdf8; border-color: #38bdf8; background: #17334b; }
+.sim-keyboard-pad p { margin: 8px 0; }
+.sim-keyboard-pad kbd { padding: 2px 6px; border: 1px solid #64748b; border-radius: 4px; background: #0f172a; font-size: 12px; }
+.sim-control-guide { color: #94a3b8; font-size: 12px; line-height: 1.6; margin: 10px 0; }
