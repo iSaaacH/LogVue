@@ -260,6 +260,12 @@ export class SimulationService {
     }
   }
 
+  /** Clear held inputs when control ownership changes between renderers. */
+  releaseLiveInputs(): void {
+    const neutral = sanitizeGamepad({ connected: false } as SimulationGamepadSnapshot)
+    this.publishGamepads({ gamepad1: neutral, gamepad2: neutral })
+  }
+
   /** Latest-value mailbox fed by preload's one-way ipcRenderer.send path. */
   publishGamepads(frame: SimulationGamepadFrame): void {
     if (!this.client || !this.config || !['running', 'paused'].includes(this.phase)) return

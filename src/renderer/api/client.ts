@@ -36,6 +36,10 @@ export const api = {
       window.api.invoke('settings:setConfirmDeletePopulatedSessions', confirm)
   },
   simulation: {
+    getControlsWindow: () => window.api.invoke('simulation:getControlsWindow'),
+    openControls: () => window.api.invoke('simulation:openControls'),
+    closeControls: () => window.api.invoke('simulation:closeControls'),
+    pinControls: (pinned: boolean) => window.api.invoke('simulation:pinControls', pinned),
     getStatus: () => window.api.invoke('simulation:getStatus'),
     pickProject: () => window.api.invoke('simulation:pickProject'),
     pickRlog: () => window.api.invoke('simulation:pickRlog'),

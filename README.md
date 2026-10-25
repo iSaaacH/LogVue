@@ -57,6 +57,12 @@ Use **Build** after selecting a fresh robot checkout and again after changing ro
 code. LogVue itself may be running from `npm run dev`; the generated distribution belongs to the
 selected robot repository, not to the LogVue installation.
 
+After initialising a session, choose **Detach controls ↗** to open a small driving panel above
+AdvantageScope. The main window minimises automatically. The panel has keyboard/controller
+selection, held Aim/Intake/Shoot buttons, pause/run, step, and stop. Uncheck **Stay on top** if
+needed. **Full setup ↗** (or closing the panel) restores the main window without restarting the
+simulation. Switching away from the panel releases its inputs; renderer failure stops the worker.
+
 Continuous Run is always real-time, which suits a human driving with a LIVE gamepad. For agent
 tests, RLOG-driven sessions, and batch log generation, set an absolute simulation timestamp and use
 **Run fast** directly. LogVue initializes a fresh worker when needed; SpiderKit crosses the START

@@ -33,7 +33,9 @@ const CONTROLLER_2_STORAGE_KEY = 'logvue.sim.controller2'
 
 type Slot = 1 | 2
 
-export default function SimulateWorkspace(): JSX.Element {
+export default function SimulateWorkspace({ compact = false }: { compact?: boolean }): JSX.Element {
+  const [detached, setDetached] = useState(compact)
+  const [pinned, setPinned] = useState(true)
   const [status, setStatus] = useState<SimulationStatus | null>(null)
   const [projectDirectory, setProjectDirectory] = useState(
     () => globalThis.localStorage?.getItem('logvue.sim.project') ?? ''
@@ -44,7 +46,9 @@ export default function SimulateWorkspace(): JSX.Element {
   const [scenarioId, setScenarioId] = useState('')
   const [gamepad1Source, setGamepad1Source] = useState<SimulationGamepadSource>({ kind: 'NONE' })
   const [gamepad2Source, setGamepad2Source] = useState<SimulationGamepadSource>({ kind: 'NONE' })
-  const [keyboardEnabled, setKeyboardEnabled] = useState(false)
+  const [keyboardEnabled, setKeyboardEnabled] = useState(
+    () => globalThis.localStorage?.getItem('logvue.sim.keyboard') === 'true'
+  )
   const [controller1, setController1] = useState<number | null>(() =>
     parseStoredControllerIndex(globalThis.localStorage?.getItem(CONTROLLER_1_STORAGE_KEY) ?? null)
   )
@@ -66,6 +70,27 @@ export default function SimulateWorkspace(): JSX.Element {
   const hydratedPid = useRef<number | null>(null)
   const catalogHydratedPid = useRef<number | null>(null)
   const { controllers, lastActivatedIndex, supported: gamepadsSupported } = useBrowserControllers()
+
+  useEffect(() => {
+    if (compact) document.title = 'LogVue — Driving controls'
+  }, [compact])
+
+  useEffect(() => {
+    let alive = true
+    void api.simulation.getControlsWindow().then(value => { if (alive) setDetached(value) })
+    const unsubscribe = window.api.onSimulationControlsWindow(setDetached)
+    const syncBindings = (event: StorageEvent): void => {
+      if (event.key === 'logvue.sim.keyboard') setKeyboardEnabled(event.newValue === 'true')
+      if (event.key === CONTROLLER_1_STORAGE_KEY) setController1(parseStoredControllerIndex(event.newValue))
+      if (event.key === CONTROLLER_2_STORAGE_KEY) setController2(parseStoredControllerIndex(event.newValue))
+    }
+    window.addEventListener('storage', syncBindings)
+    return () => { alive = false; unsubscribe(); window.removeEventListener('storage', syncBindings) }
+  }, [])
+
+  useEffect(() => {
+    globalThis.localStorage?.setItem('logvue.sim.keyboard', String(keyboardEnabled))
+  }, [keyboardEnabled])
 
   const phase = status?.phase ?? 'idle'
   const sessionActive = Boolean(status?.pid)
@@ -236,8 +261,9 @@ export default function SimulateWorkspace(): JSX.Element {
     }
   }, [controller1, controller2, controllers, gamepad1Source.kind, gamepad2Source.kind, lastActivatedIndex, keyboardEnabled])
 
-  const publishGamepad1 = sessionActive && status?.config?.gamepad1.kind === 'LIVE'
-  const publishGamepad2 = sessionActive && status?.config?.gamepad2.kind === 'LIVE'
+  const inputOwner = compact || !detached
+  const publishGamepad1 = inputOwner && sessionActive && status?.config?.gamepad1.kind === 'LIVE'
+  const publishGamepad2 = inputOwner && sessionActive && status?.config?.gamepad2.kind === 'LIVE'
   const keyboard = useKeyboardGamepad(Boolean(publishGamepad1 && keyboardEnabled && phase === 'running'))
   const keyboardRead = useRef(keyboard.read)
   keyboardRead.current = keyboard.read
@@ -246,14 +272,14 @@ export default function SimulateWorkspace(): JSX.Element {
     let animationFrame = 0
     const publish = (): void => {
       api.simulation.publishGamepads({
-        gamepad1: publishGamepad1 ? keyboardEnabled ? keyboardRead.current() : readBrowserGamepad(controller1) : undefined,
-        gamepad2: publishGamepad2 ? readBrowserGamepad(controller2) : undefined
+        gamepad1: publishGamepad1 ? keyboardEnabled ? keyboardRead.current() : readBrowserGamepad(compact && !document.hasFocus() ? null : controller1) : undefined,
+        gamepad2: publishGamepad2 ? readBrowserGamepad(compact && !document.hasFocus() ? null : controller2) : undefined
       })
       animationFrame = window.requestAnimationFrame(publish)
     }
     publish()
     return () => window.cancelAnimationFrame(animationFrame)
-  }, [controller1, controller2, publishGamepad1, publishGamepad2, keyboardEnabled])
+  }, [compact, controller1, controller2, publishGamepad1, publishGamepad2, keyboardEnabled])
 
   const chooseProject = async (): Promise<void> => {
     setBusy('pick-project')
@@ -320,6 +346,7 @@ export default function SimulateWorkspace(): JSX.Element {
       controller1,
       controller2,
       controllers,
+      keyboardEnabled,
       rlogPort
     })
     if (validationError) {
@@ -423,8 +450,76 @@ export default function SimulateWorkspace(): JSX.Element {
     }
   }
 
+  if (compact) return (
+    <div className="sim-mini">
+      <header className="sim-mini-header">
+        <div><strong>Driving controls</strong><small>{selectedOpMode?.name ?? 'Robot simulation'}</small></div>
+        <button className="ghost sm" onClick={() => void api.simulation.closeControls()}>Full setup ↗</button>
+      </header>
+      <div className="sim-mini-status">
+        <span className={`sim-state-badge ${phase}`}><span className="dot" />{phase}</span>
+        <span className="sim-mini-time">{formatSimTime(runner?.timeSeconds ?? 0)}</span>
+        <label><input type="checkbox" checked={pinned} onChange={event => {
+          const value = event.target.checked
+          void api.simulation.pinControls(value).then(() => setPinned(value))
+        }} /> Stay on top</label>
+      </div>
+      <div className="sim-mini-actions">
+        <button onClick={runPrimaryControl} disabled={primaryControlDisabled || !sessionActive}>{primaryControlLabel}</button>
+        <button className="ghost" disabled={busy !== null || phase !== 'paused'} onClick={() => void command('step', () => api.simulation.step(1))}>Step</button>
+        <button className="ghost sim-mini-stop" disabled={!sessionActive || busy !== null} onClick={() => void command('stop', api.simulation.stop)}>Stop</button>
+      </div>
+      {gamepad1Source.kind === 'LIVE' ? <>
+        <label className="sim-mini-source">Drive with
+          <select aria-label="Driving input" value={keyboardEnabled ? 'keyboard' : controller1 ?? ''}
+            onChange={event => {
+              setKeyboardEnabled(event.target.value === 'keyboard')
+              setController1(event.target.value === 'keyboard' || event.target.value === '' ? null : Number(event.target.value))
+            }}>
+            <option value="keyboard">Keyboard</option><option value="">Choose controller…</option>
+            {controllers.filter(c => c.mapping === 'standard').map(c => <option key={c.index} value={c.index}>{c.id}</option>)}
+          </select>
+        </label>
+        {keyboardEnabled ? <div className="sim-keyboard-pad sim-mini-pad" tabIndex={0}
+          onPointerDown={keyboard.onFocus}
+          onFocus={keyboard.onFocus} onBlur={event => { if (!event.currentTarget.contains(event.relatedTarget as Node | null)) keyboard.onBlur() }}
+          aria-label="Keyboard driving area. Focus here to drive; leave to release all controls.">
+          <strong>Click here to drive</strong>
+          <p><kbd>W A S D</kbd> move · <kbd>Q E</kbd> turn</p>
+          <div className="sim-mini-holds">
+            {([['Space', 'Aim'], ['KeyI', 'Intake'], ['KeyK', 'Shoot']] as const).map(([code, label]) =>
+              <button key={code} className="ghost" disabled={phase !== 'running'}
+                onPointerDown={event => {
+                  event.preventDefault()
+                  event.currentTarget.closest<HTMLElement>('.sim-keyboard-pad')?.focus()
+                  event.currentTarget.setPointerCapture(event.pointerId)
+                  keyboard.onFocus()
+                  keyboard.press(code)
+                }} onPointerUp={() => keyboard.release(code)} onPointerCancel={() => keyboard.release(code)}
+                onLostPointerCapture={() => keyboard.release(code)}>{label}</button>)}
+          </div>
+          <p><kbd>Space</kbd> aim · <kbd>I</kbd> intake · <kbd>K</kbd> shoot</p>
+          <p><kbd>X</kbd> eject · <kbd>T</kbd> tip HIVE</p>
+          <small>Hold a key or button. Switching windows releases controls.</small>
+        </div> : <p className="sim-mini-help">RB aim · RT shoot · LT intake<br />Right stick move · Left stick turn</p>}
+      </> : <p className="sim-mini-help">Gamepad 1 uses {gamepad1Source.kind}. Open Full setup to change sources for a new session.</p>}
+      <footer className="sim-mini-footer">
+        <span className={runner?.gamepad1?.connected ? 'connected' : ''}>{runner?.gamepad1?.connected ? '● Input connected' : '○ Input released'}</span>
+        <span>{runner?.rlog?.running ? formatRlogEndpoint(runner.rlog) : 'Viewer offline'}</span>
+      </footer>
+      {status?.lastError && <p role="alert" className="sim-mini-error">{status.lastError.message}</p>}
+      {!sessionActive && <p className="sim-mini-help">Open Full setup to initialise a new simulation.</p>}
+    </div>
+  )
+
   return (
     <div className="simulate-workspace">
+      <div className="sim-detach-bar">
+        <span>{detached ? 'Driving controls are in the floating panel.' : 'Keep the field visible while you drive.'}</span>
+        <button className="ghost sm" disabled={!sessionActive} onClick={() => void api.simulation.openControls().catch(error => reportError('Could not detach controls', error))}>
+          {detached ? 'Show driving panel ↗' : 'Detach controls ↗'}
+        </button>
+      </div>
       <div className="sim-grid">
         <div className="sim-column">
           <section className="sim-card">
@@ -593,7 +688,7 @@ export default function SimulateWorkspace(): JSX.Element {
                 />
               </div>
               {keyboardEnabled && gamepad1Source.kind === 'LIVE' && (
-                <div className="sim-keyboard-pad" tabIndex={0} onFocus={keyboard.onFocus} onBlur={keyboard.onBlur}
+                <div className="sim-keyboard-pad" tabIndex={0} onFocus={keyboard.onFocus} onBlur={keyboard.onBlur} onPointerDown={keyboard.onFocus}
                   aria-label="Keyboard driving area. Focus here to drive; leave to release all controls.">
                   <strong>Click here to drive with the keyboard</strong>
                   <p><kbd>W A S D</kbd> move · <kbd>Q E</kbd> turn · <kbd>Space</kbd> hold rear aim</p>
@@ -919,6 +1014,7 @@ function validateSetup({
   controller1,
   controller2,
   controllers,
+  keyboardEnabled = false,
   rlogPort
 }: {
   project: SimulationProject | null
@@ -928,6 +1024,7 @@ function validateSetup({
   controller1: number | null
   controller2: number | null
   controllers: BrowserController[]
+  keyboardEnabled?: boolean
   rlogPort: string
 }): string | null {
   if (!project) return 'Choose a valid robot project before starting.'
@@ -937,6 +1034,7 @@ function validateSetup({
   if (gamepad2Source.kind === 'RLOG' && !gamepad2Source.path) return 'Choose the Gamepad 2 RLOG.'
   if (
     gamepad1Source.kind === 'LIVE' &&
+    !keyboardEnabled &&
     (controller1 === null || !controllers.some(({ index, mapping }) => index === controller1 && mapping === 'standard'))
   ) {
     return 'Connect and choose a standard-mapped controller for Gamepad 1.'

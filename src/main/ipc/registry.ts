@@ -30,6 +30,8 @@ import {
 } from '../services/simulation/project'
 import { getSimulationService } from '../services/simulation/service'
 import { emitIpcEvent } from './events'
+import { closeSimulationControls, openSimulationControls, ownsSimulationInputs,
+  pinSimulationControls, simulationControlsDetached } from '../simulationControls'
 import { runImportTask, runNewSessionImportTask, runSingleImportTask } from '../services/import/importTask'
 import {
   createSessionCommand,
@@ -75,6 +77,10 @@ const handlers: Handlers = {
 
   // ── SpiderKit simulation ──
   'simulation:getStatus': async () => simulationService().getStatus(),
+  'simulation:getControlsWindow': async () => simulationControlsDetached(),
+  'simulation:openControls': openSimulationControls,
+  'simulation:closeControls': async () => closeSimulationControls(),
+  'simulation:pinControls': async (pinned) => pinSimulationControls(pinned),
   'simulation:pickProject': async () => {
     const win = BrowserWindow.getFocusedWindow() ?? undefined
     const result = await dialog.showOpenDialog(win!, {
@@ -356,7 +362,8 @@ export function registerIpcHandlers(): void {
     const handler = handlers[channel] as (...args: unknown[]) => unknown
     ipcMain.handle(channel, (_event, ...args) => handler(...args))
   }
-  ipcMain.on('simulation:gamepads', (_event, frame) => {
+  ipcMain.on('simulation:gamepads', (event, frame) => {
+    if (!ownsSimulationInputs(event.sender.id)) return
     try {
       simulationService().publishGamepads(frame)
     } catch (error) {

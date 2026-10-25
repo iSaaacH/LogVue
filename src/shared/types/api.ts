@@ -15,6 +15,7 @@ export interface Api {
   onTaskUpdate(handler: (task: IpcEvents['tasks:update']) => void): () => void
   onSimulationStatus(handler: (status: IpcEvents['simulation:status']) => void): () => void
   onSimulationStderr(handler: (event: IpcEvents['simulation:stderr']) => void): () => void
+  onSimulationControlsWindow(handler: (detached: boolean) => void): () => void
   /** Latest-value, one-way publish path; there is intentionally no promise per browser frame. */
   publishSimulationGamepads(frame: IpcSends['simulation:gamepads']): void
 }

@@ -77,6 +77,7 @@ export interface IpcEvents {
   'tasks:update': Task
   'simulation:status': SimulationStatus
   'simulation:stderr': SimulationStderrEvent
+  'simulation:controlsWindow': boolean
 }
 
 /** High-rate renderer-to-main messages. These deliberately do not use invoke/reply IPC. */
@@ -94,6 +95,10 @@ export interface IpcApi {
 
   // ── RobotSim (standalone CLI process) ─────────────────────
   'simulation:getStatus': () => Promise<SimulationStatus>
+  'simulation:getControlsWindow': () => Promise<boolean>
+  'simulation:openControls': () => Promise<void>
+  'simulation:closeControls': () => Promise<void>
+  'simulation:pinControls': (pinned: boolean) => Promise<void>
   'simulation:pickProject': () => Promise<string | null>
   'simulation:pickRlog': () => Promise<string | null>
   'simulation:reportError': (title: string, message: string) => Promise<void>

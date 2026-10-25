@@ -33,6 +33,9 @@ const api: Api = {
   },
   publishSimulationGamepads(frame) {
     ipcRenderer.send('simulation:gamepads', frame)
+  },
+  onSimulationControlsWindow(handler) {
+    return subscribe('simulation:controlsWindow', handler)
   }
 }
 

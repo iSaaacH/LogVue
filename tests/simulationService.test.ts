@@ -217,6 +217,11 @@ describe('SimulationService', () => {
       leftStickX: 0.5,
       a: true
     })
+    service.releaseLiveInputs()
+    await new Promise((resolve) => setImmediate(resolve))
+    const released = process.stdin.requests.filter(({ command }) => command === 'gamepadUpdate').at(-1)
+    expect(released.gamepad1).toMatchObject({ connected: false, leftStickX: 0, a: false })
+    expect(released.gamepad2).toBeUndefined()
     await service.pause()
     await service.advance(1.5)
     expect(process.stdin.requests).toContainEqual(

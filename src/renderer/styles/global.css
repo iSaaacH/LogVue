@@ -2650,5 +2650,31 @@ button.chip.meta.more {
 .sim-keyboard-pad { padding: 16px; margin: 14px 0; border: 2px solid var(--border, #475569); border-radius: 12px; background: #152030; cursor: pointer; color: #e2e8f0; }
 .sim-keyboard-pad:focus { outline: 3px solid #38bdf8; border-color: #38bdf8; background: #17334b; }
 .sim-keyboard-pad p { margin: 8px 0; }
+.sim-detach-bar { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding-bottom: 12px; color: var(--muted); font-size: 13px; }
+.sim-mini { padding: 14px; min-height: 100vh; box-sizing: border-box; display: flex; flex-direction: column; gap: 12px; background: #0e1116; color: #e2e8f0; }
+.sim-mini-header { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+.sim-mini-header strong { font-size: 16px; }
+.sim-mini-header small { display: block; color: #94a3b8; font-size: 11px; margin-top: 5px; max-width: 220px; }
+.sim-mini-status { display: flex; gap: 10px; align-items: center; justify-content: space-between; }
+.sim-mini-status .sim-state-badge { padding: 4px 8px; font-size: 11px; }
+.sim-mini-status label { display: flex; align-items: center; gap: 5px; font-size: 11px; color: #94a3b8; white-space: nowrap; }
+.sim-mini-status input { width: auto; margin: 0; }
+.sim-mini-time { font-family: monospace; font-size: 16px; }
+.sim-mini-actions, .sim-mini-holds { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+.sim-mini-actions button { padding: 8px 10px; }
+.sim-mini-stop { color: #fda4af; }
+.sim-mini-source { display: flex; gap: 12px; align-items: center; font-size: 12px; color: #94a3b8; }
+.sim-mini-source select { flex: 1; min-width: 0; padding: 7px; }
+.sim-mini-pad { margin: 0; padding: 12px; }
+.sim-mini-pad strong { font-size: 14px; }
+.sim-mini-pad p { font-size: 12px; line-height: 1.6; }
+.sim-mini-pad small { display: block; font-size: 11px; color: #94a3b8; line-height: 1.5; }
+.sim-mini-holds { margin: 10px 0; }
+.sim-mini-holds button { padding: 8px; touch-action: none; user-select: none; }
+.sim-mini-holds button:active { background: #075985; border-color: #38bdf8; }
+.sim-mini-footer { display: flex; justify-content: space-between; gap: 8px; font: 11px monospace; color: #94a3b8; margin-top: auto; }
+.sim-mini-footer .connected { color: #4ade80; }
+.sim-mini-help { font-size: 12px; line-height: 1.7; color: #94a3b8; }
+.sim-mini-error { font-size: 12px; color: #fda4af; }
 .sim-keyboard-pad kbd { padding: 2px 6px; border: 1px solid #64748b; border-radius: 4px; background: #0f172a; font-size: 12px; }
 .sim-control-guide { color: #94a3b8; font-size: 12px; line-height: 1.6; margin: 10px 0; }

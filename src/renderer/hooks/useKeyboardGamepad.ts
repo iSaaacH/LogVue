@@ -29,6 +29,8 @@ export function useKeyboardGamepad(active: boolean): {
   read: () => SimulationGamepadSnapshot
   onFocus: () => void
   onBlur: () => void
+  press: (code: string) => void
+  release: (code: string) => void
 } {
   const keys = useRef(new Set<string>())
   const focused = useRef(false)
@@ -59,6 +61,8 @@ export function useKeyboardGamepad(active: boolean): {
   return {
     read: () => keyboardSnapshot(keys.current, active && focused.current && !document.hidden),
     onFocus: () => { focused.current = true },
-    onBlur: () => { focused.current = false; keys.current.clear() }
+    onBlur: () => { focused.current = false; keys.current.clear() },
+    press: (code) => { if (active && focused.current && DRIVE_KEYS.has(code)) keys.current.add(code) },
+    release: (code) => { keys.current.delete(code) }
   }
 }

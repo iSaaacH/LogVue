@@ -12,6 +12,7 @@ import {
   stopAgentOpModeService
 } from './services/opmode/service'
 import { getSimulationService } from './services/simulation/service'
+import { ownsSimulationInputs, registerSimulationMainWindow } from './simulationControls'
 
 function createWindow(): void {
   const win = new BrowserWindow({
@@ -36,6 +37,8 @@ function createWindow(): void {
     }
   })
 
+  registerSimulationMainWindow(win)
+  const simulationSenderId = win.webContents.id
   let uiLossHandled = false
   const failClosedForUiLoss = (reason: string): void => {
     if (uiLossHandled) return
@@ -43,7 +46,7 @@ function createWindow(): void {
     void setAgentOpModeControlEnabled(false).catch((error) => {
       console.error(`Failed to release the agent OpMode lease after ${reason}:`, error)
     })
-    getSimulationService(emitIpcEvent).failClose(reason)
+    if (ownsSimulationInputs(simulationSenderId)) getSimulationService(emitIpcEvent).failClose(reason)
   }
 
   // The operator gate must not remain armed without a working, visible LogVue UI.
