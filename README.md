@@ -57,7 +57,7 @@ Use **Build** after selecting a fresh robot checkout and again after changing ro
 code. LogVue itself may be running from `npm run dev`; the generated distribution belongs to the
 selected robot repository, not to the LogVue installation.
 
-After initialising a session, choose **Detach controls ↗** to open a small driving panel above
+Choose **Mini controls ↗** in the top toolbar (available from every view) to open a small driving panel above
 AdvantageScope. The main window minimises automatically. The panel has keyboard/controller
 selection, held Aim/Intake/Shoot buttons, pause/run, step, and stop. Uncheck **Stay on top** if
 needed. **Full setup ↗** (or closing the panel) restores the main window without restarting the

@@ -97,6 +97,12 @@ export default function Toolbar({ settings, onSettings, onMcpSetup }: Props): JS
       </div>
 
       <div className="toolbar-right">
+        <button type="button" className="ghost sm sim-mini-launch"
+          title="Open the floating driving panel above AdvantageScope"
+          onClick={() => void api.simulation.openControls().catch(error =>
+            api.simulation.reportError('Could not open mini controls',error instanceof Error?error.message:String(error)))}>
+          Mini controls ↗
+        </button>
         {agentOpMode?.operatorEnabled && (
           <button
             type="button"

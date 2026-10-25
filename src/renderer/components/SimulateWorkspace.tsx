@@ -517,7 +517,7 @@ export default function SimulateWorkspace({ compact = false }: { compact?: boole
       <div className="sim-detach-bar">
         <span>{detached ? 'Driving controls are in the floating panel.' : 'Keep the field visible while you drive.'}</span>
         <button className="ghost sm" disabled={!sessionActive} onClick={() => void api.simulation.openControls().catch(error => reportError('Could not detach controls', error))}>
-          {detached ? 'Show driving panel ↗' : 'Detach controls ↗'}
+          {detached ? 'Show mini controls ↗' : 'Mini controls ↗'}
         </button>
       </div>
       <div className="sim-grid">
